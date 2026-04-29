@@ -94,6 +94,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Future<void> processMember(Member found) async {
     if (_isProcessing) return;
+    FocusScope.of(context).unfocus(); // ✅ ADDED
     _isProcessing = true;
 
     if (found.id == "0") {
@@ -345,10 +346,137 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         },
                       ),
 
+                      const SizedBox(height: 20),
+
+                      SizedBox( // ✅ ADDED
+                        width: double.infinity,
+                        height: 320,
+                        child: message != null
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.center, // ✅ ADDED
+                                children: [
+                                  Container(
+                                    width: double.infinity,
+                                    height: 120,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: message == "CHECKED IN"
+                                          ? successGreen // ✅ MODIFIED
+                                          : (isPaused
+                                              ? Colors.orange.shade600
+                                              : Colors.red.shade600), // ✅ MODIFIED
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Text(
+                                      message!,
+                                      textAlign: TextAlign.center, // ✅ ADDED
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 38,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+
+                                  if (subMessage != null) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      subMessage!,
+                                      textAlign: TextAlign.center, // ✅ ADDED
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 10),
+
+                                  if (currentMember != null)
+                                    Expanded(
+                                      child: Card(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(14),
+                                          child: Row(
+                                            children: [
+                                              buildAvatar(
+                                                currentMember!.photoUrl,
+                                                currentMember!.firstName[0].toUpperCase(),
+                                              ),
+                                              const SizedBox(width: 14),
+                                              Expanded(
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      currentMember!.fullName,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                          fontSize: 22,
+                                                          fontWeight: FontWeight.bold),
+                                                    ),
+                                                    Text(
+                                                      currentMember!.email,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(fontSize: 14),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      "Expires: ${DateUtilsHelper.formatDate(currentMember!.expiryDate)}",
+                                                      style: const TextStyle(fontSize: 14),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              )
+                            : Container(
+                                width: double.infinity,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).cardColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.qr_code_scanner,
+                                      size: 46,
+                                      color: Colors.grey,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      "Ready to scan",
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 6),
+                                    Text(
+                                      "Show member QR code to camera",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+
                       const SizedBox(height: 16), // ✅ ADDED
 
                       SizedBox( // ✅ ADDED
-                        height: 300,
+                        height: 260,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Stack(
@@ -371,85 +499,6 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(height: 20),
-
-                      if (message != null)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.center, // ✅ ADDED
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              height: 160,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: message == "CHECKED IN"
-                                    ? successGreen // ✅ MODIFIED
-                                    : (isPaused
-                                        ? Colors.orange.shade600
-                                        : Colors.red.shade600), // ✅ MODIFIED
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Text(
-                                message!,
-                                textAlign: TextAlign.center, // ✅ ADDED
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-
-                            if (subMessage != null) ...[
-                              const SizedBox(height: 10),
-                              Text(
-                                subMessage!,
-                                textAlign: TextAlign.center, // ✅ ADDED
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-
-                      const SizedBox(height: 20),
-
-                      if (currentMember != null)
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center, // ✅ ADDED
-                              children: [
-                                buildAvatar(
-                                  currentMember!.photoUrl,
-                                  currentMember!.firstName[0].toUpperCase(),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  currentMember!.fullName,
-                                  textAlign: TextAlign.center, // ✅ ADDED
-                                  style: const TextStyle(
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                Text(
-                                  currentMember!.email,
-                                  textAlign: TextAlign.center, // ✅ ADDED
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "Expires: ${DateUtilsHelper.formatDate(currentMember!.expiryDate)}",
-                                  textAlign: TextAlign.center, // ✅ ADDED
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                     ]
                   ],
                 ),
