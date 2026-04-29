@@ -126,7 +126,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
     final status = getStatus(m);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ MODIFIED
       appBar: AppBar(
         title: const Text("Member Pass"),
         backgroundColor: Colors.transparent,
@@ -147,7 +147,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).cardColor, // ✅ MODIFIED
                     borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
@@ -165,6 +165,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2, // ✅ ADDED
                         ),
                       ),
 
@@ -184,6 +185,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
 
                       Text(
                         m.fullName,
+                        textAlign: TextAlign.center, // ✅ ADDED
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -196,7 +198,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
                         status,
                         style: TextStyle(
                           color: status == "ACTIVE"
-                              ? Colors.green
+                              ? const Color(0xFF4DCCC2) // ✅ MODIFIED
                               : Colors.red,
                           fontWeight: FontWeight.w600,
                         ),
@@ -206,6 +208,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
 
                       Text(
                         "Expires: ${DateUtilsHelper.formatDate(m.expiryDate)}",
+                        style: const TextStyle(color: Colors.grey), // ✅ ADDED
                       ),
                     ],
                   ),
@@ -217,9 +220,16 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
               /// BUTTONS (clean)
               SizedBox(
                 width: double.infinity,
+                height: 50, // ✅ ADDED
                 child: ElevatedButton(
                   onPressed: isBusy ? null : downloadCard,
-                  child: const Text("Download Member Pass"),
+                  child: isBusy
+                      ? const SizedBox( // ✅ ADDED
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Download Member Pass"),
                 ),
               ),
 
@@ -227,7 +237,8 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
 
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                height: 50, // ✅ ADDED
+                child: OutlinedButton( // ✅ MODIFIED
                   onPressed: copyLink,
                   child: const Text("Copy QR Link"),
                 ),

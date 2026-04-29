@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:gym_app/utils/currency_utils.dart' as cu;
+import 'sales_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,22 +13,22 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final supabase = Supabase.instance.client;
 
-  double revenueToday = 0;
-
-  // ✅ UPDATED STRUCTURE
-  Map<String, Map<String, dynamic>> salesBreakdown = {};
-
-  int checkInsToday = 0;
+  bool isLoading = true;
 
   String currency = "USD";
 
-  bool isLoading = true;
+  double revenueToday = 0;
+  double revenueWeek = 0;
+  double revenueMonth = 0;
 
-  double revenueWeek = 0; // ✅ ADDED
-  double revenueMonth = 0; // ✅ ADDED
-  double revenueLifetime = 0; // ✅ ADDED
-  int salesTodayCount = 0; // ✅ ADDED
-  int activeMembersCount = 0; // ✅ ADDED
+  int activeCount = 0;
+  int expiredCount = 0;
+  int pausedCount = 0;
+
+  List<dynamic> recentSales = [];
+  List<dynamic> expiringSoon = [];
+
+  Map<String, dynamic> memberMap = {};
 
   @override
   void initState() {
@@ -40,13 +41,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
-    final last7Days = now.subtract(const Duration(days: 7)); // ✅ ADDED
-    final startOfMonth = DateTime(now.year, now.month, 1); // ✅ ADDED
+    final last7Days = now.subtract(const Duration(days: 7));
+    final startOfMonth = DateTime(now.year, now.month, 1);
 
     try {
       final user = supabase.auth.currentUser;
 
-      // ✅ FETCH USER CURRENCY
       if (user != null) {
         final profile = await supabase
             .from('profiles')
@@ -59,65 +59,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // 🔥 FETCH RENEWALS
       final renewals = await supabase
           .from('renewals')
-          .select(); // ✅ MODIFIED
+          .select()
+          .order('created_at', ascending: false);
 
-      double total = 0;
-      double weekTotal = 0; // ✅ ADDED
-      double monthTotal = 0; // ✅ ADDED
-      double lifetimeTotal = 0; // ✅ ADDED
-      int todayCount = 0; // ✅ ADDED
+      final members = await supabase.from('members').select();
 
-      Map<String, Map<String, dynamic>> breakdown = {};
+      memberMap = {
+        for (var m in members) m['id']: m
+      };
+
+      double today = 0;
+      double week = 0;
+      double month = 0;
 
       for (var r in renewals) {
         final amount = (r['amount'] ?? 0).toDouble();
-        final date = DateTime.parse(r['created_at']); // ✅ ADDED
+        final date = DateTime.parse(r['created_at']);
 
-        // ✅ HARD FIX FOR "UNKNOWN"
-        final type = (r['membership_type'] != null &&
-                r['membership_type'].toString().isNotEmpty)
-            ? r['membership_type'].toString()
-            : "${r['duration_days'] ?? 0} Day Pass";
-
-        lifetimeTotal += amount; // ✅ ADDED
-
-        if (date.isAfter(startOfDay)) { // ✅ ADDED
-          total += amount;
-          todayCount++; // ✅ ADDED
-
-          if (!breakdown.containsKey(type)) {
-            breakdown[type] = {
-              "count": 0,
-              "revenue": 0.0,
-            };
-          }
-
-          breakdown[type]!["count"] += 1;
-          breakdown[type]!["revenue"] += amount;
+        if (date.isAfter(startOfDay)) {
+          today += amount;
         }
 
         if (date.isAfter(last7Days)) {
-          weekTotal += amount; // ✅ ADDED
+          week += amount;
         }
 
         if (date.isAfter(startOfMonth)) {
-          monthTotal += amount; // ✅ ADDED
+          month += amount;
         }
       }
 
-      // 🔥 FETCH CHECK-INS
-      final checkins = await supabase
-          .from('check_ins')
-          .select()
-          .gte('created_at', startOfDay.toIso8601String());
+      int active = 0;
+      int expired = 0;
+      int paused = 0;
 
-      // 🔥 FETCH MEMBERS FOR ACTIVE COUNT
-      final members = await supabase.from('members').select(); // ✅ ADDED
+      List<dynamic> expiring = [];
 
-      int activeCount = members.where((m) { // ✅ ADDED
+      for (var m in members) {
         final hasPlan = m['membership_type'] != null &&
             m['membership_type'].toString().isNotEmpty;
 
@@ -132,24 +112,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final isPaused = pausedUntil != null &&
             pausedUntil.isAfter(now);
 
-        return hasPlan &&
-            !isCancelled &&
-            expiry.isAfter(now) &&
-            !isPaused;
-      }).length;
+        if (isPaused) {
+          paused++;
+        } else if (hasPlan && !isCancelled && expiry.isAfter(now)) {
+          active++;
+        } else if (hasPlan && expiry.isBefore(now)) {
+          expired++;
+        }
+
+        if (expiry.isAfter(now) &&
+            expiry.isBefore(now.add(const Duration(days: 5)))) {
+          expiring.add(m);
+        }
+      }
 
       setState(() {
-        revenueToday = total;
-        salesBreakdown = breakdown;
-        checkInsToday = checkins
-            .map((c) => c['member_id'])
-            .toSet()
-            .length; // ✅ MODIFIED (unique members only)
-        revenueWeek = weekTotal; // ✅ ADDED
-        revenueMonth = monthTotal; // ✅ ADDED
-        revenueLifetime = lifetimeTotal; // ✅ ADDED
-        salesTodayCount = todayCount; // ✅ ADDED
-        activeMembersCount = activeCount; // ✅ ADDED
+        revenueToday = today;
+        revenueWeek = week;
+        revenueMonth = month;
+
+        activeCount = active;
+        expiredCount = expired;
+        pausedCount = paused;
+
+        recentSales = renewals.take(6).toList();
+        expiringSoon = expiring.take(5).toList();
+
         isLoading = false;
       });
     } catch (e) {
@@ -158,27 +146,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget buildRevenueCard() {
+  Widget revenueBlock() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.black,
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF22C55E), // ✅ FORCED GREEN
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
           const Text(
-            "Today Revenue",
-            style: TextStyle(color: Colors.white70),
+            "Today",
+            style: TextStyle(
+              color: Colors.white70,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             cu.CurrencyUtils.format(revenueToday, currency),
             style: const TextStyle(
-              fontSize: 32,
+              fontSize: 36,
               fontWeight: FontWeight.bold,
               color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "Week: ${cu.CurrencyUtils.format(revenueWeek, currency)}   Month: ${cu.CurrencyUtils.format(revenueMonth, currency)}",
+            style: const TextStyle(
+              color: Colors.white70,
             ),
           ),
         ],
@@ -186,77 +183,148 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget buildSalesBreakdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Sales Breakdown",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  Widget statsRow() {
+    final theme = Theme.of(context);
+
+    Widget box(String label, int value, Color color) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(label),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
+      );
+    }
 
-        if (salesBreakdown.isEmpty)
-          const Text("No sales today"),
+    return Row(
+      children: [
+        box("Active", activeCount, Colors.green),
+        const SizedBox(width: 10),
+        box("Expired", expiredCount, Colors.red),
+        const SizedBox(width: 10),
+        box("Paused", pausedCount, Colors.orange),
+      ],
+    );
+  }
 
-        ...salesBreakdown.entries.map((e) {
-          final name = e.key;
-          final count = e.value["count"];
-          final revenue = e.value["revenue"];
+  Widget expiringSoonBlock() {
+    final theme = Theme.of(context);
 
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(name),
-            subtitle: Text(
-              cu.CurrencyUtils.format(revenue, currency),
+    return Card(
+      color: theme.cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Expiring Soon",
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            trailing: Text("x$count"),
-          );
-        }),
-      ],
+            const SizedBox(height: 10),
+            if (expiringSoon.isEmpty)
+              const Text("No upcoming expirations"),
+            ...expiringSoon.map((m) {
+              final expiry = DateTime.parse(m['expiry_date']);
+              final days =
+                  expiry.difference(DateTime.now()).inDays;
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                    "${m['first_name']} ${m['last_name']}"),
+                trailing: Text("$days days"),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget buildCheckins() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Check-Ins Today",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          checkInsToday.toString(),
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
+  Widget recentSalesBlock() {
+    final theme = Theme.of(context);
 
-  Widget buildExtraStats() { // ✅ ADDED
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Stats",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    return Card(
+      color: theme.cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Recent Sales",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SalesScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text("View All Sales"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (recentSales.isEmpty)
+              const Text("No sales yet"),
+            ...recentSales.map((r) {
+              final member = memberMap[r['member_id']];
+              final name = member != null
+                  ? "${member['first_name']} ${member['last_name']}"
+                  : "Member";
+
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(name),
+                subtitle: Text(r['membership_type'] ?? ""),
+                trailing: Text(
+                  cu.CurrencyUtils.format(
+                      (r['amount'] ?? 0).toDouble(), currency),
+                ),
+              );
+            }),
+          ],
         ),
-        const SizedBox(height: 10),
-        Text("7 Days: ${cu.CurrencyUtils.format(revenueWeek, currency)}"),
-        Text("Month: ${cu.CurrencyUtils.format(revenueMonth, currency)}"),
-        Text("All Time: ${cu.CurrencyUtils.format(revenueLifetime, currency)}"),
-        const SizedBox(height: 10),
-        Text("Sales Today: $salesTodayCount"),
-        Text("Active Members: $activeMembersCount"),
-      ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Dashboard")),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        title: const Text("Dashboard"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: theme.textTheme.bodyLarge?.color,
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -264,13 +332,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  buildRevenueCard(),
-                  const SizedBox(height: 20),
-                  buildExtraStats(), // ✅ ADDED
-                  const SizedBox(height: 20),
-                  buildSalesBreakdown(),
-                  const SizedBox(height: 20),
-                  buildCheckins(),
+                  revenueBlock(),
+                  const SizedBox(height: 16),
+                  statsRow(),
+                  const SizedBox(height: 16),
+                  expiringSoonBlock(),
+                  const SizedBox(height: 16),
+                  recentSalesBlock(),
                 ],
               ),
             ),

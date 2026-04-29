@@ -58,7 +58,6 @@ class _MemberListScreenState extends State<MemberListScreen> {
     return MemberStatus.inactive;
   }
 
-  // ✅ ADDED (retention logic)
   bool isExpiringSoon(Member m) {
     final now = DateTime.now();
     return m.membershipType != null &&
@@ -207,28 +206,27 @@ class _MemberListScreenState extends State<MemberListScreen> {
           member.id.toLowerCase().contains(query);
 
       bool matchesFilter = true;
-final status = getStatus(member);
+      final status = getStatus(member);
 
-if (selectedFilter == "ALL") {
-  matchesFilter = true;
-} else if (selectedFilter == "ACTIVE") {
-  matchesFilter = status == MemberStatus.active;
-} else if (selectedFilter == "EXPIRED") {
-  matchesFilter = status == MemberStatus.expired;
-} else if (selectedFilter == "EXPIRING") {
-  matchesFilter = isExpiringSoon(member);
-} else if (selectedFilter == "INACTIVE") {
-  matchesFilter = isInactiveRetention(member);
-} else if (selectedFilter == "PAUSED") { // ✅ ADDED
-  matchesFilter = status == MemberStatus.paused;
-} else if (selectedFilter == "CANCELLED") { // ✅ ADDED
-  matchesFilter = status == MemberStatus.cancelled;
-}
+      if (selectedFilter == "ALL") {
+        matchesFilter = true;
+      } else if (selectedFilter == "ACTIVE") {
+        matchesFilter = status == MemberStatus.active;
+      } else if (selectedFilter == "EXPIRED") {
+        matchesFilter = status == MemberStatus.expired;
+      } else if (selectedFilter == "EXPIRING") {
+        matchesFilter = isExpiringSoon(member);
+      } else if (selectedFilter == "INACTIVE") {
+        matchesFilter = isInactiveRetention(member);
+      } else if (selectedFilter == "PAUSED") {
+        matchesFilter = status == MemberStatus.paused;
+      } else if (selectedFilter == "CANCELLED") {
+        matchesFilter = status == MemberStatus.cancelled;
+      }
 
       return matchesSearch && matchesFilter;
     }).toList();
 
-    // ✅ ADDED (sort expiring soonest first)
     if (selectedFilter == "EXPIRING") {
       filteredMembers.sort(
         (a, b) => a.expiryDate.compareTo(b.expiryDate),
@@ -241,44 +239,40 @@ if (selectedFilter == "ALL") {
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
-            onPressed: () { // ✅ MODIFIED
-  showModalBottomSheet(
-    context: context,
-    builder: (_) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-
-          ListTile(
-  title: const Text("EXPIRED"),
-  onTap: () {
-    Navigator.pop(context);
-    setState(() => selectedFilter = "EXPIRED");
-  },
-),
-
-ListTile(
-  title: const Text("PAUSED"),
-  onTap: () {
-    Navigator.pop(context);
-    setState(() => selectedFilter = "PAUSED");
-  },
-),
-
-ListTile(
-  title: const Text("CANCELLED"),
-  onTap: () {
-    Navigator.pop(context);
-    setState(() => selectedFilter = "CANCELLED");
-  },
-),
-
-          const SizedBox(height: 10),
-        ],
-      ),
-    ),
-  );
-},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                builder: (_) => SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ListTile(
+                        title: const Text("EXPIRED"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => selectedFilter = "EXPIRED");
+                        },
+                      ),
+                      ListTile(
+                        title: const Text("PAUSED"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => selectedFilter = "PAUSED");
+                        },
+                      ),
+                      ListTile(
+                        title: const Text("CANCELLED"),
+                        onTap: () {
+                          Navigator.pop(context);
+                          setState(() => selectedFilter = "CANCELLED");
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -331,7 +325,6 @@ ListTile(
                           itemBuilder: (context, index) {
                             final member = filteredMembers[index];
 
-                            // ✅ ADDED (days left calc)
                             final daysLeft = member.expiryDate
                                 .difference(DateTime.now())
                                 .inDays;
@@ -340,63 +333,14 @@ ListTile(
                               onLongPress: () => _showActions(member),
                               child: Card(
                                 margin: const EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.all(16),
-
-                                  leading: buildAvatar(
-                                    member.photoUrl,
-                                    member.firstName.isNotEmpty
-                                        ? member.firstName[0].toUpperCase()
-                                        : "?",
-                                  ),
-
-                                  title: Text(
-                                    member.fullName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
-                                        style: const TextStyle(
-                                            color: Colors.grey),
-                                      ),
-
-                                      // ✅ ADDED (only show for expiring filter)
-                                      if (selectedFilter == "EXPIRING")
-                                        Text(
-                                          "$daysLeft days left",
-                                          style: const TextStyle(
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-
-                                      if (member.phone.isNotEmpty)
-                                        Text(
-                                          member.phone,
-                                          style: const TextStyle(
-                                              color: Colors.grey),
-                                        ),
-                                    ],
-                                  ),
-
-                                  trailing: buildStatus(member),
-
-                                  onTap: () async {
+                                child: InkWell( // ✅ ADDED
+                                  borderRadius: BorderRadius.circular(16), // ✅ ADDED
+                                  onTap: () async { // ✅ MOVED HERE
                                     final result = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (_) =>
-                                            MemberDetailScreen(
-                                                member: member),
+                                            MemberDetailScreen(member: member),
                                       ),
                                     );
 
@@ -408,6 +352,65 @@ ListTile(
                                       if (mounted) setState(() {});
                                     }
                                   },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(14),
+                                    child: Row(
+                                      children: [
+                                        buildAvatar(
+                                          member.photoUrl,
+                                          member.firstName.isNotEmpty
+                                              ? member.firstName[0].toUpperCase()
+                                              : "?",
+                                        ),
+
+                                        const SizedBox(width: 12),
+
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                member.fullName,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 4),
+
+                                              Text(
+                                                "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
+                                                style: const TextStyle(
+                                                    color: Colors.grey),
+                                              ),
+
+                                              if (selectedFilter == "EXPIRING")
+                                                Text(
+                                                  "$daysLeft days left",
+                                                  style: const TextStyle(
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+
+                                              if (member.phone.isNotEmpty)
+                                                Text(
+                                                  member.phone,
+                                                  style: const TextStyle(
+                                                      color: Colors.grey),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+
+                                        const SizedBox(width: 8),
+
+                                        buildStatus(member),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             );

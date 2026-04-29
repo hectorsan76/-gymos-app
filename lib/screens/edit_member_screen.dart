@@ -31,6 +31,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   Uint8List? newImageBytes;
   bool isSaving = false;
+  bool isDeleting = false; // ✅ ADDED
 
   @override
   void initState() {
@@ -49,7 +50,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   }
 
   Future<void> pickImage() async {
-    if (isSaving) return;
+    if (isSaving || isDeleting) return; // ✅ MODIFIED
 
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
@@ -103,7 +104,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   }
 
   Future<void> saveChanges() async {
-    if (isSaving) return;
+    if (isSaving || isDeleting) return; // ✅ MODIFIED
 
     FocusScope.of(context).unfocus();
     setState(() => isSaving = true);
@@ -145,10 +146,62 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     }
   }
 
+  Future<void> deleteMember() async { // ✅ ADDED
+    if (isSaving || isDeleting) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Member"),
+        content: const Text(
+          "This will permanently remove this member from your gym. Their purchase and check-in history will remain stored.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => isDeleting = true);
+
+    try {
+      await supabase.from('members').update({
+        'deleted_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.member.id);
+
+      if (!mounted) return;
+
+      Navigator.pop(context, "deleted");
+    } catch (e) {
+      debugPrint("DELETE MEMBER ERROR: $e");
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not delete member")),
+      );
+
+      setState(() => isDeleting = false);
+    }
+  }
+
   Widget buildAvatar(String fallback) {
     if (newImageBytes != null) {
       return CircleAvatar(
         radius: 50,
+        backgroundColor: Colors.grey[300],
         backgroundImage: MemoryImage(newImageBytes!),
       );
     }
@@ -158,22 +211,24 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     if (url != null && url.isNotEmpty) {
       return CircleAvatar(
         radius: 50,
+        backgroundColor: Colors.grey[300],
         backgroundImage: CachedNetworkImageProvider(url),
       );
     }
 
     return CircleAvatar(
       radius: 50,
+      backgroundColor: Colors.grey[300],
       child: Text(fallback),
     );
   }
 
   Widget input(String label, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: controller,
-        enabled: !isSaving,
+        enabled: !isSaving && !isDeleting, // ✅ MODIFIED
         decoration: InputDecoration(
           border: const OutlineInputBorder(),
           labelText: label,
@@ -191,7 +246,7 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text("Edit Member")),
       body: AbsorbPointer(
-        absorbing: isSaving,
+        absorbing: isSaving || isDeleting, // ✅ MODIFIED
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
@@ -199,7 +254,32 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  buildAvatar(firstLetter),
+
+                  Stack( // ✅ ADDED
+                    children: [
+                      buildAvatar(firstLetter),
+                      Positioned( // ✅ ADDED
+                        bottom: 0,
+                        right: 0,
+                        child: GestureDetector( // ✅ ADDED
+                          onTap: pickImage,
+                          child: Container( // ✅ ADDED
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 20),
 
                   input("First Name", firstNameController),
@@ -214,15 +294,37 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                   input("Instagram", instagramController),
                   input("Notes", notesController),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   SizedBox(
                     width: double.infinity,
+                    height: 56,
                     child: ElevatedButton(
-                      onPressed: isSaving ? null : saveChanges,
+                      onPressed: isSaving || isDeleting ? null : saveChanges, // ✅ MODIFIED
                       child: isSaving
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text("Save Changes"),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12), // ✅ ADDED
+
+                  SizedBox( // ✅ ADDED
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton(
+                      onPressed: isSaving || isDeleting ? null : deleteMember,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      child: isDeleting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text("Delete Member"),
                     ),
                   ),
                 ],

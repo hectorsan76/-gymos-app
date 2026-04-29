@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../main.dart'; // 👈 needed for AuthGate
+import 'signup_screen.dart'; // ✅ ADDED
+import 'forgot_password_screen.dart'; // ✅ ADDED
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -57,7 +59,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
-      // 🔥 CRITICAL FIX: reset navigation after login
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
@@ -81,12 +82,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 20), // ✅ ADDED
+
                     const Text(
-                      "GymOS Login",
-                      style: TextStyle(
-                        fontSize: 24,
+                      "GymOS",
+                      style: TextStyle( // ✅ MODIFIED
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
                       ),
+                    ),
+
+                    const SizedBox(height: 6), // ✅ ADDED
+
+                    const Text(
+                      "Staff Login", // ✅ ADDED
+                      style: TextStyle(color: Colors.grey),
                     ),
 
                     const SizedBox(height: 30),
@@ -100,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14), // ✅ MODIFIED
 
                     TextField(
                       controller: passwordController,
@@ -112,11 +122,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10), // ✅ ADDED
+
+                    Align( // ✅ ADDED
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: loading
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
+                        child: const Text("Forgot Password?"),
+                      ),
+                    ),
+
+                    const SizedBox(height: 14), // ✅ ADDED
 
                     SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 56, // ✅ MODIFIED
                       child: ElevatedButton(
                         onPressed: loading ? null : login,
                         child: loading
@@ -130,6 +160,22 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : const Text("Login"),
                       ),
+                    ),
+
+                    const SizedBox(height: 12), // ✅ ADDED
+
+                    TextButton( // ✅ ADDED
+                      onPressed: loading
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SignUpScreen(),
+                                ),
+                              );
+                            },
+                      child: const Text("Create Account"),
                     ),
                   ],
                 ),

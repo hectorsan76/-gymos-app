@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/member.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,9 +31,10 @@ class GymApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: AuthGate(),
+      theme: AppTheme.light(),
+      home: const AuthGate(),
     );
   }
 }
@@ -54,8 +56,7 @@ class _AuthGateState extends State<AuthGate> {
   void initState() {
     super.initState();
 
-    _isLoggedIn = supabase.auth.currentSession != null;
-    debugPrint("AUTH INIT: isLoggedIn=$_isLoggedIn");
+    _initAuth();
 
     _authSub = supabase.auth.onAuthStateChange.listen((data) {
       final loggedIn = data.session != null;
@@ -64,15 +65,32 @@ class _AuthGateState extends State<AuthGate> {
 
       if (!mounted) return;
 
-      if (loggedIn != _isLoggedIn) {
-        setState(() => _isLoggedIn = loggedIn);
+      setState(() => _isLoggedIn = loggedIn);
 
-        if (data.session != null) {
-          supabase.realtime.setAuth(data.session!.accessToken);
-          debugPrint("✅ REALTIME AUTH SET (AUTH CHANGE)");
-        }
+      if (data.session != null) {
+        supabase.realtime.setAuth(data.session!.accessToken);
+        debugPrint("✅ REALTIME AUTH SET (AUTH CHANGE)");
       }
     });
+  }
+
+  Future<void> _initAuth() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final session = supabase.auth.currentSession;
+
+    debugPrint("AUTH INIT: session=$session");
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoggedIn = session != null;
+    });
+
+    if (session != null) {
+      supabase.realtime.setAuth(session.accessToken);
+      debugPrint("✅ REALTIME AUTH SET (INIT)");
+    }
   }
 
   @override
@@ -121,7 +139,8 @@ class _MembersShellState extends State<MembersShell> {
 
     _fetchMembers();
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(seconds: 2), () async {
+      await supabase.auth.refreshSession();
       _setupRealtime();
     });
   }
@@ -129,8 +148,8 @@ class _MembersShellState extends State<MembersShell> {
   Future<void> _setupRealtime() async {
     final session = supabase.auth.currentSession;
 
-    if (session == null) {
-      debugPrint("❌ REALTIME FAILED: no session");
+    if (session == null || session.isExpired) {
+      debugPrint("❌ REALTIME FAILED: no valid session");
       return;
     }
 
@@ -149,9 +168,6 @@ class _MembersShellState extends State<MembersShell> {
           schema: 'public',
           table: 'check_ins',
           callback: (payload) {
-            debugPrint("🔥 REALTIME CHECK-IN DETECTED");
-            debugPrint("DATA: ${payload.newRecord}");
-
             final memberId = payload.newRecord['member_id'];
 
             final member = _members.firstWhere(
@@ -182,13 +198,7 @@ class _MembersShellState extends State<MembersShell> {
             _fetchMembers();
           },
         )
-        .subscribe((status, [error]) {
-          debugPrint("⚡ REALTIME STATUS: $status");
-
-          if (error != null) {
-            debugPrint("❌ REALTIME ERROR: $error");
-          }
-        });
+        .subscribe();
   }
 
   @override
@@ -219,8 +229,6 @@ class _MembersShellState extends State<MembersShell> {
         _isFetching = false;
         return;
       }
-
-      debugPrint("FETCHING MEMBERS FOR: ${user.id}");
 
       final data = await supabase
           .from('members')

@@ -33,7 +33,13 @@ class _RenewMembershipScreenState extends State<RenewMembershipScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Renew Membership")),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ ADDED
+      appBar: AppBar(
+        title: const Text("Renew Membership"),
+        backgroundColor: Colors.transparent, // ✅ ADDED
+        elevation: 0, // ✅ ADDED
+        foregroundColor: Colors.black, // ✅ ADDED
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 500), // 🔥 FIX
@@ -44,8 +50,14 @@ class _RenewMembershipScreenState extends State<RenewMembershipScreen> {
               final plan = MembershipPlans.plans[index];
 
               return Card(
+                color: Theme.of(context).cardColor, // ✅ ADDED
+                elevation: 0, // ✅ ADDED
+                shape: RoundedRectangleBorder( // ✅ ADDED
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 margin: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
+                  borderRadius: BorderRadius.circular(16), // ✅ ADDED
                   onTap: isProcessing ? null : () => handleRenew(plan),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
@@ -63,7 +75,10 @@ class _RenewMembershipScreenState extends State<RenewMembershipScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text("${plan.durationDays} days"),
+                            Text(
+                              "${plan.durationDays} days",
+                              style: const TextStyle(color: Colors.grey), // ✅ ADDED
+                            ),
                           ],
                         ),
                         isProcessing
@@ -72,7 +87,7 @@ class _RenewMembershipScreenState extends State<RenewMembershipScreen> {
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.arrow_forward_ios),
+                            : const Icon(Icons.arrow_forward_ios, size: 18), // ✅ MODIFIED
                       ],
                     ),
                   ),

@@ -138,7 +138,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             'instagram': instagramController.text.trim(),
             'notes': notesController.text.trim(),
 
-            // ✅ CLEAN DEFAULT STATE (NO MEMBERSHIP)
             'expiry_date': DateTime.now().toIso8601String(),
             'paused_until': null,
             'remaining_days_on_pause': null,
@@ -221,13 +220,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(6),
                             decoration: BoxDecoration(
-                              color: Colors.green,
+                              color: Theme.of(context).primaryColor, // ✅ MODIFIED
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
                               Icons.camera_alt,
                               size: 16,
-                              color: Colors.black,
+                              color: Colors.white, // ✅ MODIFIED
                             ),
                           ),
                         ),
@@ -239,9 +238,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   _input("Last Name", lastNameController),
                   _input("Phone", phoneController),
                   _input("Email", emailController),
-                  const SizedBox(height: 10),
-                  const Divider(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8), // ✅ MODIFIED
+                  Divider(color: Colors.grey[300]), // ✅ MODIFIED
+                  const SizedBox(height: 8), // ✅ MODIFIED
                   _input("Address", addressController),
                   _input("Country", countryController),
                   _input("Instagram", instagramController),
@@ -249,15 +248,17 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
                   const SizedBox(height: 30),
 
-                  // ✅ ONLY ACTION
                   SizedBox(
                     width: double.infinity,
-                    height: 55,
+                    height: 60, // ✅ MODIFIED
                     child: ElevatedButton(
                       onPressed: saveMember,
                       child: isSaving
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Save Member"),
+                          : const Text(
+                              "Save Member",
+                              style: TextStyle(fontSize: 18), // ✅ ADDED
+                            ),
                     ),
                   ),
                 ],
@@ -276,7 +277,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         controller: controller,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+          border: OutlineInputBorder( // ✅ MODIFIED
+            borderRadius: BorderRadius.circular(12), // ✅ ADDED
+          ),
         ),
       ),
     );

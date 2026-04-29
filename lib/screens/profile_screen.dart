@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart'; // ✅ ADDED
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -77,6 +78,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder( // ✅ ADDED
+          borderRadius: BorderRadius.circular(16),
+        ),
         title: const Text("Change Currency?"),
         content: const Text(
           "Changing currency will affect how revenue is displayed.\n\n"
@@ -125,7 +129,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      final bytes = await file.readAsBytes();
+      final originalBytes = await file.readAsBytes(); // ✅ MODIFIED
+
+      final compressed = await FlutterImageCompress.compressWithList( // ✅ ADDED
+        originalBytes,
+        quality: 60,
+        minWidth: 800,
+        minHeight: 800,
+      );
+
+      final bytes = compressed; // ✅ ADDED
 
       final filePath = "${user.id}/avatar.jpg";
 
@@ -246,73 +259,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Profile"),
+        backgroundColor: Colors.transparent, // ✅ ADDED
+        elevation: 0, // ✅ ADDED
+        foregroundColor: Colors.black, // ✅ ADDED
       ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ ADDED
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: pickAndUploadImage,
-              child: avatarUrl.isNotEmpty
-                  ? CircleAvatar(
-                      radius: 40,
-                      backgroundImage: NetworkImage(avatarUrl),
-                    )
-                  : const CircleAvatar(
-                      radius: 40,
-                      child: Icon(Icons.camera_alt),
-                    ),
-            ),
 
-            const SizedBox(height: 8),
-            const Text("Tap to upload photo"),
-
-            const SizedBox(height: 20),
-
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Full Name"),
-            ),
-
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(labelText: "Phone"),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ✅ NEW CURRENCY SECTION
-            Align(
-              alignment: Alignment.centerLeft,
-              child: const Text(
-                "Currency",
-                style: TextStyle(fontWeight: FontWeight.bold),
+            Container( // ✅ ADDED
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                  ),
+                ],
               ),
-            ),
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: pickAndUploadImage,
+                    child: avatarUrl.isNotEmpty
+                        ? CircleAvatar(
+                            radius: 40,
+                            backgroundImage: NetworkImage(avatarUrl),
+                          )
+                        : const CircleAvatar(
+                            radius: 40,
+                            child: Icon(Icons.camera_alt),
+                          ),
+                  ),
 
-            DropdownButton<String>(
-              value: selectedCurrency,
-              isExpanded: true,
-              items: currencies.map((c) {
-                return DropdownMenuItem(
-                  value: c,
-                  child: Text(c),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  showCurrencyWarning(value);
-                }
-              },
+                  const SizedBox(height: 8),
+                  const Text("Tap to upload photo"),
+
+                  const SizedBox(height: 20),
+
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(labelText: "Email"),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: "Full Name"),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(labelText: "Phone"),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: const Text(
+                      "Currency",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  DropdownButton<String>(
+                    value: selectedCurrency,
+                    isExpanded: true,
+                    items: currencies.map((c) {
+                      return DropdownMenuItem(
+                        value: c,
+                        child: Text(c),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        showCurrencyWarning(value);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 30),
@@ -323,23 +357,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: saving ? null : saveProfile,
                 child: saving
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox( // ✅ MODIFIED
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text("Save Profile"),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12), // ✅ MODIFIED
 
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton(
+              child: OutlinedButton( // ✅ MODIFIED
                 onPressed: isLoggingOut ? null : logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
                 ),
                 child: isLoggingOut
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const SizedBox( // ✅ MODIFIED
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text("Logout"),
               ),
             ),
