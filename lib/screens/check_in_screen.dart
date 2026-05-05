@@ -389,7 +389,7 @@ class _CheckInScreenState extends State<CheckInScreen>
             padding: const EdgeInsets.all(16),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 600),
+                constraints: const BoxConstraints(maxWidth: 900),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [

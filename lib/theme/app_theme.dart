@@ -104,6 +104,7 @@ class AppTheme {
         secondary: AppColors.accent,
         surface: AppColors.darkSurface,
         error: AppColors.danger,
+        surfaceTint: Colors.transparent,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.darkBackground,

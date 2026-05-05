@@ -263,7 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text("Profile"),
         backgroundColor: Colors.transparent, // ✅ ADDED
         elevation: 0, // ✅ ADDED
-        foregroundColor: Colors.black, // ✅ ADDED
       ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ ADDED
       body: SingleChildScrollView(

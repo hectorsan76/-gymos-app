@@ -38,7 +38,6 @@ class _RenewMembershipScreenState extends State<RenewMembershipScreen> {
         title: const Text("Renew Membership"),
         backgroundColor: Colors.transparent, // ✅ ADDED
         elevation: 0, // ✅ ADDED
-        foregroundColor: Colors.black, // ✅ ADDED
       ),
       body: Center(
         child: ConstrainedBox(

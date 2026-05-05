@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../models/member.dart';
 import '../utils/date_utils.dart';
+import '../utils/responsive.dart';
 import 'member_detail_screen.dart';
 import 'paywall_screen.dart';
 import '../services/purchase_service.dart';
@@ -181,21 +182,18 @@ class _MemberListScreenState extends State<MemberListScreen> {
   }
 
   Widget buildAvatar(String? url, String fallback) {
+    final radius = R.avatarRadius(context);
     if (url == null || url.isEmpty) {
       return CircleAvatar(
-        radius: 24,
+        radius: radius,
         backgroundColor: Theme.of(context).cardColor,
         child: Text(fallback),
       );
     }
-
     return CircleAvatar(
-      radius: 24,
-      backgroundColor: const Color(0xFFE5E5EA),
-      backgroundImage: CachedNetworkImageProvider(
-        url,
-        cacheKey: url,
-      ),
+      radius: radius,
+      backgroundColor: Colors.grey.shade400,
+      backgroundImage: CachedNetworkImageProvider(url, cacheKey: url),
     );
   }
 
@@ -349,6 +347,10 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                   .difference(DateTime.now())
                                   .inDays;
 
+                              final cardPad = R.isTablet(context) ? 20.0 : 14.0;
+                              final nameSize = R.fontSize(context, 16);
+                              final subSize = R.fontSize(context, 13);
+
                               return GestureDetector(
                                 onLongPress: () => _showActions(member),
                                 child: Card(
@@ -363,7 +365,6 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                               MemberDetailScreen(member: member),
                                         ),
                                       );
-
                                       if (result == true) {
                                         if (widget.onRefresh != null) {
                                           await widget.onRefresh!();
@@ -373,7 +374,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                       }
                                     },
                                     child: Padding(
-                                      padding: const EdgeInsets.all(14),
+                                      padding: EdgeInsets.all(cardPad),
                                       child: Row(
                                         children: [
                                           buildAvatar(
@@ -382,9 +383,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                                 ? member.firstName[0].toUpperCase()
                                                 : "?",
                                           ),
-
-                                          const SizedBox(width: 12),
-
+                                          SizedBox(width: R.isTablet(context) ? 16 : 12),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment:
@@ -392,41 +391,38 @@ class _MemberListScreenState extends State<MemberListScreen> {
                                               children: [
                                                 Text(
                                                   member.fullName,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                     fontWeight: FontWeight.w600,
-                                                    fontSize: 16,
+                                                    fontSize: nameSize,
                                                   ),
                                                 ),
-
                                                 const SizedBox(height: 4),
-
                                                 Text(
                                                   "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
-                                                  style: const TextStyle(
-                                                      color: Colors.grey),
+                                                  style: TextStyle(
+                                                      color: Colors.grey,
+                                                      fontSize: subSize),
                                                 ),
-
                                                 if (selectedFilter == "EXPIRING")
                                                   Text(
                                                     "$daysLeft days left",
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       color: Colors.red,
                                                       fontWeight: FontWeight.w600,
+                                                      fontSize: subSize,
                                                     ),
                                                   ),
-
                                                 if (member.phone.isNotEmpty)
                                                   Text(
                                                     member.phone,
-                                                    style: const TextStyle(
-                                                        color: Colors.grey),
+                                                    style: TextStyle(
+                                                        color: Colors.grey,
+                                                        fontSize: subSize),
                                                   ),
                                               ],
                                             ),
                                           ),
-
                                           const SizedBox(width: 8),
-
                                           buildStatus(member),
                                         ],
                                       ),

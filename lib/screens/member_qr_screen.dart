@@ -131,7 +131,6 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
         title: const Text("Member Pass"),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black,
       ),
       body: Center(
         child: ConstrainedBox(

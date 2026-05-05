@@ -46,6 +46,7 @@ app.*.map.json
 
 # iOS build artifacts
 ios/build/
+ios/Runner */
 
 # Debug/temp files
 build_log.txt

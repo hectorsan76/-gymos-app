@@ -591,7 +591,7 @@ child: isProcessingSale
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 650),
+          constraints: const BoxConstraints(maxWidth: 900),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
