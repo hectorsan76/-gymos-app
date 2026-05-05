@@ -472,13 +472,33 @@ child: isProcessingSale
     );
   }
 
+  Widget _infoRow(IconData icon, String value, {Widget? trailing}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: Colors.grey),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (trailing != null) trailing,
+        ],
+      ),
+    );
+  }
+
   Widget buildAvatar(Member member) {
     final url = member.photoUrl;
 
     if (url != null && url.isNotEmpty) {
       return CircleAvatar(
         radius: 50,
-        backgroundColor: const Color(0xFFD6D6D6), // ✅ MODIFIED
+        backgroundColor: Colors.grey.shade400,
         child: ClipOval(
           child: CachedNetworkImage(
             imageUrl: "$url?t=${DateTime.now().millisecondsSinceEpoch}",
@@ -510,7 +530,7 @@ child: isProcessingSale
 
     return CircleAvatar(
   radius: 50,
-  backgroundColor: const Color(0xFFD6D6D6), // ✅ ADDED
+  backgroundColor: Colors.grey.shade400,
   child: Text(
         member.firstName.isNotEmpty
             ? member.firstName[0].toUpperCase()
@@ -560,17 +580,13 @@ child: isProcessingSale
     final canPause = hasPlan && !member.isCancelled && member.expiryDate.isAfter(DateTime.now()); // ✅ ADDED
 
     return Scaffold(
-  backgroundColor: Theme.of(context).scaffoldBackgroundColor, // ✅ MODIFIED
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(member.fullName),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: openEditMember,
-          )
+          IconButton(icon: const Icon(Icons.edit), onPressed: openEditMember),
         ],
       ),
       body: Center(
@@ -581,144 +597,115 @@ child: isProcessingSale
             child: Column(
               children: [
 
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor, // ✅ MODIFIED
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-  BoxShadow(
-    color: Colors.black.withOpacity(0.04), // ✅ MODIFIED
-    blurRadius: 24, // ✅ MODIFIED
-    offset: const Offset(0, 6), // ✅ ADDED
-  ),
-],
-                  ),
-                  child: Column(
-                    children: [
-
-                      buildAvatar(member),
-
-                      const SizedBox(height: 12),
-
-                      Text(
-                        member.fullName,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 6),
-Row( // ✅ MODIFIED
-  mainAxisAlignment: MainAxisAlignment.center,
-  crossAxisAlignment: CrossAxisAlignment.center,
-  children: [
-    Flexible( // ✅ ADDED
-      child: Text(
-        member.email,
-        overflow: TextOverflow.ellipsis, // ✅ ADDED
-      ),
-    ),
-    const SizedBox(width: 4),
-    if (member.email.isNotEmpty)
-      IconButton(
-        icon: const Icon(Icons.email, size: 20, color: const Color(0xFF005A9C)), 
-        onPressed: () {
-          sendEmail(member.email, member.firstName);
-        },
-      ),
-  ],
-),
-
-Row( // ✅ MODIFIED
-  mainAxisAlignment: MainAxisAlignment.center,
-  children: [
-    Text(
-      member.phone,
-      style: const TextStyle(fontWeight: FontWeight.w500), // ✅ MODIFIED
-    ),
-    const SizedBox(width: 6),
-    if (member.phone.isNotEmpty)
-      IconButton(
-        icon: const Icon(
-          Icons.chat, // ✅ MODIFIED
-          size: 18,
-          color: Color(0xFF25D366), // ✅ ADDED
-        ),
-        onPressed: () {
-          openWhatsApp(member.phone, member.firstName);
-        },
-      ),
-  ],
-),
-
-                      if ((member.address ?? "").isNotEmpty)
-                        Text(member.address!),
-
-                      if ((member.country ?? "").isNotEmpty)
-                        Text(member.country!),
-
-                      if ((member.instagram ?? "").isNotEmpty)
-                        Text("IG: ${member.instagram!}"),
-
-                      if ((member.notes ?? "").isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            member.notes!,
-                            style: const TextStyle(color: Colors.grey),
+                // ── Header card: avatar + name + status ──
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        buildAvatar(member),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                member.fullName,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  statusText,
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                member.isCancelled ? "No Active Plan" : membershipLabel,
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Text(
+                                "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
+                                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                              ),
+                              if (isPaused)
+                                Text(
+                                  "Resumes: ${DateUtilsHelper.formatDate(member.pausedUntil!)}",
+                                  style: const TextStyle(color: Colors.orange, fontSize: 12),
+                                ),
+                            ],
                           ),
                         ),
-
-                      const SizedBox(height: 12),
-
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-
-                      Text(
-                        member.isCancelled
-                            ? "No Active Plan"
-                            : membershipLabel,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      Text(
-                        "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
-                        style: const TextStyle(color: Colors.grey),
-                      ),
-
-                      if (isPaused)
-                        Text(
-                          "Resumes: ${DateUtilsHelper.formatDate(member.pausedUntil!)}",
-                          style: const TextStyle(color: Colors.orange),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
 
-                SizedBox(
-  width: double.infinity,
-  height: 56, // ✅ ADDED
-  child: ElevatedButton(
-    onPressed: showSellMembershipModal,
-    child: const Text("Purchase Membership"),
-  ),
-),
-          
+                // ── Contact info card ──
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    child: Column(
+                      children: [
+                        _infoRow(Icons.email, member.email,
+                            trailing: member.email.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.email, size: 20),
+                                    onPressed: () => sendEmail(member.email, member.firstName),
+                                  )
+                                : null),
+                        _infoRow(Icons.phone, member.phone,
+                            trailing: member.phone.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.chat, size: 18,
+                                        color: Color(0xFF25D366)),
+                                    onPressed: () => openWhatsApp(member.phone, member.firstName),
+                                  )
+                                : null),
+                        if ((member.address ?? '').isNotEmpty)
+                          _infoRow(Icons.location_on, member.address!),
+                        if ((member.country ?? '').isNotEmpty)
+                          _infoRow(Icons.flag, member.country!),
+                        if ((member.instagram ?? '').isNotEmpty)
+                          _infoRow(Icons.camera_alt, "IG: ${member.instagram!}"),
+                        if ((member.notes ?? '').isNotEmpty)
+                          _infoRow(Icons.notes, member.notes!),
+                      ],
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 10),
 
+                // ── Purchase button ──
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: showSellMembershipModal,
+                    child: const Text("Purchase Membership"),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // ── Action buttons 2x2 grid ──
                 Row(
                   children: [
                     Expanded(
@@ -727,7 +714,7 @@ Row( // ✅ MODIFIED
                         child: const Text("Edit Expiry"),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
@@ -735,20 +722,16 @@ Row( // ✅ MODIFIED
                         ),
                         onPressed: canPause
                             ? showPauseOptions
-                            : () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Cannot pause this membership"),
-                                  ),
-                                );
-                              },
+                            : () => ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Cannot pause this membership")),
+                                ),
                         child: const Text("Pause"),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
 
                 Row(
                   children: [
@@ -758,34 +741,25 @@ Row( // ✅ MODIFIED
                         child: const Text("Resume"),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton(
                         onPressed: cancelMembership,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
                         child: const Text("Cancel"),
                       ),
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => MemberQRScreen(member: member),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => MemberQRScreen(member: member)),
                         ),
-                      );
-                    },
-                    child: const Text("Show QR Code"),
-                  ),
+                        child: const Text("QR Code"),
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 20),

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/member.dart';
 import '../utils/date_utils.dart';
 import 'member_detail_screen.dart';
+import 'paywall_screen.dart';
 import '../services/purchase_service.dart';
 
 class MemberListScreen extends StatefulWidget {
@@ -94,15 +95,17 @@ class _MemberListScreenState extends State<MemberListScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? const Color(0xFF007AFF)
-                : const Color(0xFFE5E5EA),
+                ? Theme.of(context).primaryColor
+                : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
+              color: isSelected
+                  ? Colors.white
+                  : Theme.of(context).textTheme.bodyMedium?.color,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -181,7 +184,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
     if (url == null || url.isEmpty) {
       return CircleAvatar(
         radius: 24,
-        backgroundColor: const Color(0xFFE5E5EA),
+        backgroundColor: Theme.of(context).cardColor,
         child: Text(fallback),
       );
     }
@@ -220,7 +223,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
       } else if (selectedFilter == "EXPIRING") {
         matchesFilter = isExpiringSoon(member);
       } else if (selectedFilter == "INACTIVE") {
-        matchesFilter = isInactiveRetention(member);
+        matchesFilter = status == MemberStatus.inactive;
       } else if (selectedFilter == "PAUSED") {
         matchesFilter = status == MemberStatus.paused;
       } else if (selectedFilter == "CANCELLED") {
@@ -240,9 +243,12 @@ class _MemberListScreenState extends State<MemberListScreen> {
       valueListenable: purchaseService.isProNotifier, // ✅ ADDED
       builder: (context, isPro, child) {
         if (!isPro) {
-          return const Center(
-            child: Text("Upgrade to Pro to access Members"),
-          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const PaywallScreen()),
+            );
+          });
+          return const Scaffold(body: SizedBox.shrink());
         }
 
         return child!;

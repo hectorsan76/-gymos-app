@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'models/member.dart';
@@ -9,8 +10,15 @@ import 'screens/login_screen.dart';
 import 'services/purchase_service.dart';
 import 'theme/app_theme.dart';
 
+final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  final prefs = await SharedPreferences.getInstance();
+  final savedTheme = prefs.getString('theme_mode');
+  if (savedTheme == 'dark') themeNotifier.value = ThemeMode.dark;
+  if (savedTheme == 'light') themeNotifier.value = ThemeMode.light;
 
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
@@ -34,10 +42,15 @@ class GymApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      home: const AuthGate(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, mode, _) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: mode,
+        home: const AuthGate(),
+      ),
     );
   }
 }

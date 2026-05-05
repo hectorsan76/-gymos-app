@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart'; // ✅ ADDED
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import '../main.dart' show themeNotifier;
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -349,7 +351,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 16),
+
+            // Dark mode toggle
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                final isDark = mode == ThemeMode.dark;
+                return Card(
+                  child: SwitchListTile(
+                    title: const Text('Dark Mode'),
+                    secondary: Icon(
+                      isDark ? Icons.dark_mode : Icons.light_mode,
+                    ),
+                    value: isDark,
+                    onChanged: (val) async {
+                      themeNotifier.value =
+                          val ? ThemeMode.dark : ThemeMode.light;
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString(
+                          'theme_mode', val ? 'dark' : 'light');
+                    },
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 20),
 
             SizedBox(
               width: double.infinity,

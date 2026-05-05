@@ -134,13 +134,6 @@ class HomeScreen extends StatelessWidget {
                               child: SizedBox(
                                 height: 56,
                                 child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue.shade600,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(14),
-                                    ),
-                                  ),
                                   onPressed: () async {
                                     final result = await Navigator.push(
                                       context,
@@ -149,17 +142,10 @@ class HomeScreen extends StatelessWidget {
                                             const AddMemberScreen(),
                                       ),
                                     );
-
                                     if (!context.mounted) return;
-
-                                    if (result == true) {
-                                      await onUpdate();
-                                    }
+                                    if (result == true) await onUpdate();
                                   },
-                                  child: const Text(
-                                    "Add Member",
-                                    style: TextStyle(fontSize: 16),
-                                  ),
+                                  child: const Text("Add Member"),
                                 ),
                               ),
                             ),
@@ -168,13 +154,6 @@ class HomeScreen extends StatelessWidget {
                               child: SizedBox(
                                 height: 56,
                                 child: ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue.shade600,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(14),
-                                    ),
-                                  ),
                                   onPressed: () async {
                                     await Navigator.push(
                                       context,
@@ -182,20 +161,15 @@ class HomeScreen extends StatelessWidget {
                                         builder: (_) => MemberListScreen(
                                           members: safeMembers,
                                           onEditMember: onEditMember,
-                                          onDeleteMember:
-                                              onDeleteMember,
+                                          onDeleteMember: onDeleteMember,
                                           onRefresh: onUpdate,
                                         ),
                                       ),
                                     );
-
                                     if (!context.mounted) return;
                                     await onUpdate();
                                   },
-                                  child: const Text(
-                                    "Members",
-                                    style: TextStyle(fontSize: 16),
-                                  ),
+                                  child: const Text("Members"),
                                 ),
                               ),
                             ),
@@ -342,12 +316,6 @@ class HomeScreen extends StatelessWidget {
     return SizedBox(
       height: 56,
       child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6C5CE7),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
         onPressed: () {
           if (isPro) {
             onTap();

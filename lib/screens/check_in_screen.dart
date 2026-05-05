@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'; // ✅ ADDED
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../models/member.dart';
 import '../utils/date_utils.dart';
@@ -21,94 +21,122 @@ class CheckInScreen extends StatefulWidget {
   State<CheckInScreen> createState() => _CheckInScreenState();
 }
 
-class _CheckInScreenState extends State<CheckInScreen> {
+class _CheckInScreenState extends State<CheckInScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController controller = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final AudioPlayer player = AudioPlayer();
-
   final supabase = Supabase.instance.client;
+  final MobileScannerController cameraController = MobileScannerController();
 
-  final MobileScannerController cameraController = MobileScannerController(); // ✅ ADDED
+  late final AnimationController _overlayAnim;
+  late final Animation<double> _scaleAnim;
+  late final Animation<double> _fadeAnim;
 
   Member? currentMember;
   String? message;
   String? subMessage;
   bool _isProcessing = false;
-  Color? flashColor;
+  bool _showOverlay = false;
+  Color _overlayColor = const Color(0xFF2ECC71);
+  bool _isSuccess = false;
 
-  String searchQuery = "";
+  String searchQuery = '';
 
-  // ✅ ADDED (match Home green)
-  final Color successGreen = const Color(0xFF2ECC71);
+  static const _successGreen = Color(0xFF2ECC71);
+
+  @override
+  void initState() {
+    super.initState();
+    _overlayAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnim = CurvedAnimation(parent: _overlayAnim, curve: Curves.elasticOut);
+    _fadeAnim = CurvedAnimation(parent: _overlayAnim, curve: Curves.easeIn);
+  }
+
+  @override
+  void dispose() {
+    _overlayAnim.dispose();
+    cameraController.dispose();
+    controller.dispose();
+    searchController.dispose();
+    player.dispose();
+    super.dispose();
+  }
 
   void resetScreen() {
     if (!mounted) return;
-    setState(() {
-      currentMember = null;
-      message = null;
-      subMessage = null;
-      searchQuery = "";
-      controller.clear();
-      searchController.clear();
+    _overlayAnim.reverse().then((_) {
+      if (!mounted) return;
+      setState(() {
+        _showOverlay = false;
+        currentMember = null;
+        message = null;
+        subMessage = null;
+        searchQuery = '';
+        _isSuccess = false;
+        controller.clear();
+        searchController.clear();
+      });
     });
   }
 
-  void triggerFlash(Color color) {
+  void _showResult({
+    required Member member,
+    required String msg,
+    String? sub,
+    required Color color,
+    required bool success,
+  }) {
     if (!mounted) return;
-
     setState(() {
-      flashColor = color;
+      currentMember = member;
+      message = msg;
+      subMessage = sub;
+      _overlayColor = color;
+      _isSuccess = success;
+      _showOverlay = true;
     });
-
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) {
-        setState(() {
-          flashColor = null;
-        });
-      }
-    });
+    _overlayAnim.forward(from: 0);
   }
 
-  void onDetect(BarcodeCapture capture) async { // ✅ ADDED
+  void onDetect(BarcodeCapture capture) async {
     if (_isProcessing) return;
-
-    final barcode = capture.barcodes.first;
-    final String? code = barcode.rawValue;
-
+    final code = capture.barcodes.first.rawValue;
     if (code == null || code.length < 6) return;
-
     final found = widget.members.firstWhere(
       (m) => m.id == code,
-      orElse: () => Member(
-        id: "0",
-        firstName: "Unknown",
-        lastName: "Member",
-        expiryDate: DateTime.now().subtract(const Duration(days: 1)),
-        phone: "N/A",
-        email: "N/A",
-      ),
+      orElse: () => _unknownMember(),
     );
-
     await processMember(found);
   }
 
+  Member _unknownMember() => Member(
+        id: '0',
+        firstName: 'Unknown',
+        lastName: 'Member',
+        expiryDate: DateTime.now().subtract(const Duration(days: 1)),
+        phone: 'N/A',
+        email: 'N/A',
+      );
+
   Future<void> processMember(Member found) async {
     if (_isProcessing) return;
-    FocusScope.of(context).unfocus(); // ✅ ADDED
+    FocusScope.of(context).unfocus();
     _isProcessing = true;
 
-    if (found.id == "0") {
-      setState(() {
-        currentMember = found;
-        message = "MEMBER NOT FOUND";
-        subMessage = "See front desk";
-      });
-
-      triggerFlash(Colors.red.shade600); // ✅ MODIFIED
+    if (found.id == '0') {
+      _showResult(
+        member: found,
+        msg: 'NOT FOUND',
+        sub: 'See front desk',
+        color: Colors.red.shade700,
+        success: false,
+      );
       player.play(AssetSource('error.mp3'));
-
       Future.delayed(const Duration(seconds: 4), resetScreen);
-
       _isProcessing = false;
       return;
     }
@@ -122,55 +150,55 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
     final member = Member.fromJson(res);
 
-    final hasPlan = member.membershipType != null &&
-        member.membershipType!.isNotEmpty;
-
+    final hasPlan =
+        member.membershipType != null && member.membershipType!.isNotEmpty;
     final isPaused = member.pausedUntil != null &&
         member.pausedUntil!.isAfter(DateTime.now());
-
-    final isActive = hasPlan &&
-        !member.isCancelled &&
-        member.expiryDate.isAfter(DateTime.now());
-
-    bool isSuccess = false;
+    final isActive =
+        hasPlan && !member.isCancelled && member.expiryDate.isAfter(DateTime.now());
 
     if (!mounted) return;
 
-    setState(() {
-      currentMember = member;
-    });
-
     if (!hasPlan) {
-      message = "NO PLAN";
-      subMessage = "Purchase membership";
-      triggerFlash(Colors.grey.shade600); // ✅ MODIFIED
+      _showResult(
+        member: member,
+        msg: 'NO PLAN',
+        sub: 'Purchase a membership',
+        color: Colors.grey.shade700,
+        success: false,
+      );
       player.play(AssetSource('error.mp3'));
-    }
-    else if (member.isCancelled) {
-      message = "CANCELLED";
-      subMessage = "See front desk";
-      triggerFlash(Colors.red.shade600); // ✅ MODIFIED
+    } else if (member.isCancelled) {
+      _showResult(
+        member: member,
+        msg: 'CANCELLED',
+        sub: 'See front desk',
+        color: Colors.red.shade700,
+        success: false,
+      );
       player.play(AssetSource('error.mp3'));
-    }
-    else if (isPaused) {
-      message = "PAUSED";
-      subMessage = "See front desk";
-      triggerFlash(Colors.orange.shade600); // ✅ MODIFIED
+    } else if (isPaused) {
+      _showResult(
+        member: member,
+        msg: 'PAUSED',
+        sub: 'Membership is on hold',
+        color: Colors.orange.shade700,
+        success: false,
+      );
       player.play(AssetSource('error.mp3'));
-    }
-    else if (!isActive) {
-      message = "EXPIRED";
-      subMessage = "Renew membership";
-      triggerFlash(Colors.red.shade600); // ✅ MODIFIED
+    } else if (!isActive) {
+      _showResult(
+        member: member,
+        msg: 'EXPIRED',
+        sub: 'Renew membership',
+        color: Colors.red.shade700,
+        success: false,
+      );
       player.play(AssetSource('error.mp3'));
-    }
-    else {
+    } else {
       try {
         final user = supabase.auth.currentUser;
-
-        if (user == null) {
-          throw Exception("User not logged in");
-        }
+        if (user == null) throw Exception('Not logged in');
 
         await supabase.from('check_ins').insert({
           'member_id': member.id,
@@ -178,92 +206,173 @@ class _CheckInScreenState extends State<CheckInScreen> {
         });
 
         member.checkIns.add(DateTime.now());
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("🔥 ${member.fullName} checked in"),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-
-        message = "CHECKED IN";
-        subMessage = null;
-        triggerFlash(successGreen); // ✅ MODIFIED
+        _showResult(
+          member: member,
+          msg: 'CHECKED IN',
+          sub: null,
+          color: _successGreen,
+          success: true,
+        );
         player.play(AssetSource('success.mp3'));
-        isSuccess = true;
+        await widget.onUpdate();
+        Future.delayed(const Duration(milliseconds: 2500), resetScreen);
       } catch (e) {
-        debugPrint("CHECK-IN ERROR: $e");
-
-        message = "ERROR";
-        subMessage = "Try again";
-        triggerFlash(Colors.red.shade600); // ✅ MODIFIED
+        debugPrint('CHECK-IN ERROR: $e');
+        _showResult(
+          member: member,
+          msg: 'ERROR',
+          sub: 'Try again',
+          color: Colors.red.shade700,
+          success: false,
+        );
         player.play(AssetSource('error.mp3'));
       }
     }
 
-    if (mounted) setState(() {});
-
-    searchQuery = "";
-    searchController.clear();
-
-    if (isSuccess) {
-      await widget.onUpdate();
-      Future.delayed(const Duration(milliseconds: 2500), resetScreen);
-    } else {
+    if (!_isSuccess) {
       Future.delayed(const Duration(seconds: 4), resetScreen);
     }
 
     Future.delayed(const Duration(milliseconds: 400), () {
       _isProcessing = false;
     });
+
+    searchQuery = '';
+    searchController.clear();
   }
 
   Future<void> handleScan() async {
     if (_isProcessing) return;
-
     final input = controller.text.trim();
     if (input.length < 6) return;
-
     final found = widget.members.firstWhere(
       (m) => m.id == input,
-      orElse: () => Member(
-        id: "0",
-        firstName: "Unknown",
-        lastName: "Member",
-        expiryDate: DateTime.now().subtract(const Duration(days: 1)),
-        phone: "N/A",
-        email: "N/A",
-      ),
+      orElse: () => _unknownMember(),
     );
-
     await processMember(found);
   }
 
-  Widget buildAvatar(String? url, String fallback) {
+  Widget _buildAvatar(String? url, String fallback, {double radius = 40}) {
     if (url == null || url.isEmpty) {
       return CircleAvatar(
-        radius: 40,
+        radius: radius,
         backgroundColor: Colors.grey[400],
         child: Text(
           fallback,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: radius * 0.8,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       );
     }
-
     return CircleAvatar(
-      radius: 40,
+      radius: radius,
       backgroundImage: CachedNetworkImageProvider(url),
       backgroundColor: Colors.grey[400],
     );
   }
 
-  @override
-  void dispose() { // ✅ ADDED
-    cameraController.dispose();
-    super.dispose();
+  Widget _buildOverlay() {
+    final member = currentMember!;
+    final initials = member.firstName.isNotEmpty
+        ? member.firstName[0].toUpperCase()
+        : '?';
+
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: Container(
+        color: _overlayColor,
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ScaleTransition(
+                scale: _scaleAnim,
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        _buildAvatar(member.photoUrl, initials, radius: 64),
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            _isSuccess ? Icons.check : Icons.close,
+                            color: _overlayColor,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    Text(
+                      member.fullName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Text(
+                      message!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2,
+                      ),
+                    ),
+
+                    if (subMessage != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        subMessage!,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 6),
+                    Text(
+                      member.email,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
+                      ),
+                    ),
+
+                    if (!_isSuccess) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -272,28 +381,23 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return m.fullName.toLowerCase().contains(searchQuery.toLowerCase());
     }).toList();
 
-    final isPaused = currentMember?.pausedUntil != null &&
-        currentMember!.pausedUntil!.isAfter(DateTime.now());
-
     return Scaffold(
-      appBar: AppBar(title: const Text("Check-In")),
+      appBar: AppBar(title: const Text('Check-In')),
       body: Stack(
         children: [
-          if (flashColor != null)
-            Container(color: flashColor!.withOpacity(0.2)),
-
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 600),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center, // ✅ ADDED
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     TextField(
                       controller: searchController,
                       decoration: InputDecoration(
-                        hintText: "Search Member",
+                        hintText: 'Search Member',
+                        prefixIcon: const Icon(Icons.search),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
@@ -301,11 +405,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      onChanged: (value) {
-                        setState(() {
-                          searchQuery = value;
-                        });
-                      },
+                      onChanged: (v) => setState(() => searchQuery = v),
                     ),
 
                     const SizedBox(height: 12),
@@ -317,10 +417,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         itemCount: filtered.length,
                         itemBuilder: (_, i) {
                           final m = filtered[i];
-
                           return Card(
                             child: ListTile(
-                              leading: buildAvatar(
+                              leading: _buildAvatar(
                                   m.photoUrl, m.firstName[0].toUpperCase()),
                               title: Text(m.fullName),
                               subtitle: Text(m.email),
@@ -333,7 +432,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       TextField(
                         controller: controller,
                         decoration: InputDecoration(
-                          hintText: "Enter Member ID",
+                          hintText: 'Enter Member ID',
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -341,141 +440,44 @@ class _CheckInScreenState extends State<CheckInScreen> {
                             borderSide: BorderSide.none,
                           ),
                         ),
-                        onChanged: (value) {
-                          if (value.length >= 6) handleScan();
+                        onChanged: (v) {
+                          if (v.length >= 6) handleScan();
                         },
                       ),
 
                       const SizedBox(height: 20),
 
-                      SizedBox( // ✅ ADDED
+                      Container(
                         width: double.infinity,
-                        height: 320,
-                        child: message != null
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.center, // ✅ ADDED
-                                children: [
-                                  Container(
-                                    width: double.infinity,
-                                    height: 120,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: message == "CHECKED IN"
-                                          ? successGreen // ✅ MODIFIED
-                                          : (isPaused
-                                              ? Colors.orange.shade600
-                                              : Colors.red.shade600), // ✅ MODIFIED
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Text(
-                                      message!,
-                                      textAlign: TextAlign.center, // ✅ ADDED
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 38,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-
-                                  if (subMessage != null) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      subMessage!,
-                                      textAlign: TextAlign.center, // ✅ ADDED
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-
-                                  const SizedBox(height: 10),
-
-                                  if (currentMember != null)
-                                    Expanded(
-                                      child: Card(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(14),
-                                          child: Row(
-                                            children: [
-                                              buildAvatar(
-                                                currentMember!.photoUrl,
-                                                currentMember!.firstName[0].toUpperCase(),
-                                              ),
-                                              const SizedBox(width: 14),
-                                              Expanded(
-                                                child: Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      currentMember!.fullName,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                          fontSize: 22,
-                                                          fontWeight: FontWeight.bold),
-                                                    ),
-                                                    Text(
-                                                      currentMember!.email,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: const TextStyle(fontSize: 14),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      "Expires: ${DateUtilsHelper.formatDate(currentMember!.expiryDate)}",
-                                                      style: const TextStyle(fontSize: 14),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              )
-                            : Container(
-                                width: double.infinity,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.qr_code_scanner,
-                                      size: 46,
-                                      color: Colors.grey,
-                                    ),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      "Ready to scan",
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 6),
-                                    Text(
-                                      "Show member QR code to camera",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.qr_code_scanner,
+                                size: 46, color: Colors.grey),
+                            SizedBox(height: 12),
+                            Text(
+                              'Ready to scan',
+                              style: TextStyle(
+                                  fontSize: 24, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Show member QR code to camera',
+                              style:
+                                  TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                          ],
+                        ),
                       ),
 
-                      const SizedBox(height: 16), // ✅ ADDED
+                      const SizedBox(height: 16),
 
-                      SizedBox( // ✅ ADDED
+                      SizedBox(
                         height: 260,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
@@ -490,7 +492,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                                   width: 220,
                                   height: 220,
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.white, width: 2),
+                                    border: Border.all(
+                                        color: Colors.white, width: 2),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
@@ -499,12 +502,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           ),
                         ),
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
             ),
           ),
+
+          if (_showOverlay)
+            Positioned.fill(child: _buildOverlay()),
         ],
       ),
     );
