@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/member.dart';
@@ -52,13 +51,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text("GymOS",
             style: TextStyle(fontSize: R.fontSize(context, 20))),
-        leading: kDebugMode
-            ? IconButton(
-                icon: const Icon(Icons.lock_open),
-                tooltip: 'Debug: unlock pro',
-                onPressed: () => PurchaseService().unlockProFake(),
-              )
-            : null,
+        leading: null,
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
