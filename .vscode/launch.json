@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "GymOS (iPhone)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "args": ["-d", "00008150-000E0C240C02401C"]
+    }
+  ]
+}

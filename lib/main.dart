@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'models/member.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/purchase_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -22,6 +23,8 @@ void main() async {
       autoRefreshToken: true,
     ),
   );
+
+  await PurchaseService().init(); // ✅ CRITICAL FOR IAP
 
   runApp(const GymApp());
 }

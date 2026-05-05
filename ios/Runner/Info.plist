@@ -24,12 +24,18 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-
-	<key>NSCameraUsageDescription</key>
-	<string>Camera is used to scan member QR codes</string>
-
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera is used to scan member QR codes</string>
+	<key>SKAdNetworkItems</key>
+	<array/>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This app uses purchases to unlock features.</string>
+
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

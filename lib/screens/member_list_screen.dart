@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/member.dart';
 import '../utils/date_utils.dart';
 import 'member_detail_screen.dart';
+import '../services/purchase_service.dart';
 
 class MemberListScreen extends StatefulWidget {
   final List<Member> members;
@@ -197,6 +198,8 @@ class _MemberListScreenState extends State<MemberListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final purchaseService = PurchaseService(); // ✅ ADDED
+
     final filteredMembers = widget.members.where((member) {
       final query = searchQuery.toLowerCase();
 
@@ -233,192 +236,204 @@ class _MemberListScreenState extends State<MemberListScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Members"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (_) => SafeArea(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+    return ValueListenableBuilder<bool>( // ✅ ADDED
+      valueListenable: purchaseService.isProNotifier, // ✅ ADDED
+      builder: (context, isPro, child) {
+        if (!isPro) {
+          return const Center(
+            child: Text("Upgrade to Pro to access Members"),
+          );
+        }
+
+        return child!;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Members"),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.filter_list),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  builder: (_) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          title: const Text("EXPIRED"),
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() => selectedFilter = "EXPIRED");
+                          },
+                        ),
+                        ListTile(
+                          title: const Text("PAUSED"),
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() => selectedFilter = "PAUSED");
+                          },
+                        ),
+                        ListTile(
+                          title: const Text("CANCELLED"),
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() => selectedFilter = "CANCELLED");
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
                     children: [
-                      ListTile(
-                        title: const Text("EXPIRED"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() => selectedFilter = "EXPIRED");
-                        },
-                      ),
-                      ListTile(
-                        title: const Text("PAUSED"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() => selectedFilter = "PAUSED");
-                        },
-                      ),
-                      ListTile(
-                        title: const Text("CANCELLED"),
-                        onTap: () {
-                          Navigator.pop(context);
-                          setState(() => selectedFilter = "CANCELLED");
-                        },
-                      ),
-                      const SizedBox(height: 10),
+                      filterButton("ALL"),
+                      filterButton("ACTIVE"),
+                      filterButton("EXPIRING"),
+                      filterButton("INACTIVE"),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    filterButton("ALL"),
-                    filterButton("ACTIVE"),
-                    filterButton("EXPIRING"),
-                    filterButton("INACTIVE"),
-                  ],
-                ),
-              ),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 12),
-
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: "Search by name or ID",
-                    prefixIcon: Icon(Icons.search),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      hintText: "Search by name or ID",
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value;
+                      });
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      searchQuery = value;
-                    });
-                  },
                 ),
-              ),
 
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-              Expanded(
-                child: filteredMembers.isEmpty
-                    ? const Center(child: Text("No members found"))
-                    : RefreshIndicator(
-                        onRefresh: widget.onRefresh ?? () async {},
-                        child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: filteredMembers.length,
-                          itemBuilder: (context, index) {
-                            final member = filteredMembers[index];
+                Expanded(
+                  child: filteredMembers.isEmpty
+                      ? const Center(child: Text("No members found"))
+                      : RefreshIndicator(
+                          onRefresh: widget.onRefresh ?? () async {},
+                          child: ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: filteredMembers.length,
+                            itemBuilder: (context, index) {
+                              final member = filteredMembers[index];
 
-                            final daysLeft = member.expiryDate
-                                .difference(DateTime.now())
-                                .inDays;
+                              final daysLeft = member.expiryDate
+                                  .difference(DateTime.now())
+                                  .inDays;
 
-                            return GestureDetector(
-                              onLongPress: () => _showActions(member),
-                              child: Card(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: InkWell( // ✅ ADDED
-                                  borderRadius: BorderRadius.circular(16), // ✅ ADDED
-                                  onTap: () async { // ✅ MOVED HERE
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            MemberDetailScreen(member: member),
-                                      ),
-                                    );
-
-                                    if (result == true) {
-                                      if (widget.onRefresh != null) {
-                                        await widget.onRefresh!();
-                                      }
-                                    } else {
-                                      if (mounted) setState(() {});
-                                    }
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(14),
-                                    child: Row(
-                                      children: [
-                                        buildAvatar(
-                                          member.photoUrl,
-                                          member.firstName.isNotEmpty
-                                              ? member.firstName[0].toUpperCase()
-                                              : "?",
+                              return GestureDetector(
+                                onLongPress: () => _showActions(member),
+                                child: Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              MemberDetailScreen(member: member),
                                         ),
+                                      );
 
-                                        const SizedBox(width: 12),
+                                      if (result == true) {
+                                        if (widget.onRefresh != null) {
+                                          await widget.onRefresh!();
+                                        }
+                                      } else {
+                                        if (mounted) setState(() {});
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Row(
+                                        children: [
+                                          buildAvatar(
+                                            member.photoUrl,
+                                            member.firstName.isNotEmpty
+                                                ? member.firstName[0].toUpperCase()
+                                                : "?",
+                                          ),
 
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                member.fullName,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
+                                          const SizedBox(width: 12),
 
-                                              const SizedBox(height: 4),
-
-                                              Text(
-                                                "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
-                                                style: const TextStyle(
-                                                    color: Colors.grey),
-                                              ),
-
-                                              if (selectedFilter == "EXPIRING")
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
                                                 Text(
-                                                  "$daysLeft days left",
+                                                  member.fullName,
                                                   style: const TextStyle(
-                                                    color: Colors.red,
                                                     fontWeight: FontWeight.w600,
+                                                    fontSize: 16,
                                                   ),
                                                 ),
 
-                                              if (member.phone.isNotEmpty)
+                                                const SizedBox(height: 4),
+
                                                 Text(
-                                                  member.phone,
+                                                  "Expires: ${DateUtilsHelper.formatDate(member.expiryDate)}",
                                                   style: const TextStyle(
                                                       color: Colors.grey),
                                                 ),
-                                            ],
+
+                                                if (selectedFilter == "EXPIRING")
+                                                  Text(
+                                                    "$daysLeft days left",
+                                                    style: const TextStyle(
+                                                      color: Colors.red,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+
+                                                if (member.phone.isNotEmpty)
+                                                  Text(
+                                                    member.phone,
+                                                    style: const TextStyle(
+                                                        color: Colors.grey),
+                                                  ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
 
-                                        const SizedBox(width: 8),
+                                          const SizedBox(width: 8),
 
-                                        buildStatus(member),
-                                      ],
+                                          buildStatus(member),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

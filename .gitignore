@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# iOS build artifacts
+ios/build/
+
+# Debug/temp files
+build_log.txt
+ios_build_error.txt
+iphone_run_log.txt
+run_log.txt
+flutter_*.png
+"ios/Runner 2026-04-30 08-48-00/"

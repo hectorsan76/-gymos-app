@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/member.dart';
@@ -7,7 +8,10 @@ import 'add_member_screen.dart';
 import 'member_list_screen.dart';
 import 'profile_screen.dart';
 import 'dashboard_screen.dart';
+import 'sales_screen.dart';
 import 'member_detail_screen.dart';
+import 'paywall_screen.dart';
+import '../services/purchase_service.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<Member> members;
@@ -50,15 +54,20 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("GymOS"),
+        leading: kDebugMode
+            ? IconButton(
+                icon: const Icon(Icons.lock_open),
+                tooltip: 'Debug: unlock pro',
+                onPressed: () => PurchaseService().unlockProFake(),
+              )
+            : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (_) => const ProfileScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
               );
             },
           ),
@@ -195,16 +204,42 @@ class HomeScreen extends StatelessWidget {
 
                         const SizedBox(height: 16),
 
-                        _button(
-                          context,
-                          label: "Dashboard",
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const DashboardScreen(),
-                              ),
+                        ValueListenableBuilder<bool>(
+                          valueListenable:
+                              PurchaseService().isProNotifier,
+                          builder: (context, isPro, _) {
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: _proButton(
+                                    context,
+                                    label: "Dashboard",
+                                    isPro: isPro,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const DashboardScreen(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: _proButton(
+                                    context,
+                                    label: "Sales",
+                                    isPro: isPro,
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const SalesScreen(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             );
                           },
                         ),
@@ -298,28 +333,40 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _button(
+  Widget _proButton(
     BuildContext context, {
     required String label,
+    required bool isPro,
     required VoidCallback onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue.shade500,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6C5CE7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-          onPressed: onTap,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 16),
-          ),
+        ),
+        onPressed: () {
+          if (isPro) {
+            onTap();
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PaywallScreen()),
+            );
+          }
+        },
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 16)),
+            if (!isPro) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.lock, size: 14),
+            ],
+          ],
         ),
       ),
     );

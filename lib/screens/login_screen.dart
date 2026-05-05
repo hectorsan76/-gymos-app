@@ -44,12 +44,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
+      debugPrint("LOGIN ATTEMPT: $email");
+
       final response = await supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       final session = response.session;
+
+      debugPrint("LOGIN RESPONSE SESSION: $session");
 
       if (session == null) {
         showError("Invalid email or password");
@@ -63,8 +67,13 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const AuthGate()),
         (route) => false,
       );
+    } on AuthException catch (e) {
+      debugPrint("AUTH LOGIN ERROR: ${e.message}");
+      showError(e.message);
+      if (mounted) setState(() => loading = false);
     } catch (e) {
-      showError("Login failed");
+      debugPrint("LOGIN UNKNOWN ERROR: $e");
+      showError("Login failed: $e");
       if (mounted) setState(() => loading = false);
     }
   }
