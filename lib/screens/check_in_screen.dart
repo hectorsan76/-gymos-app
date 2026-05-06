@@ -23,7 +23,6 @@ class CheckInScreen extends StatefulWidget {
 
 class _CheckInScreenState extends State<CheckInScreen>
     with SingleTickerProviderStateMixin {
-  final TextEditingController controller = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final AudioPlayer player = AudioPlayer();
   final supabase = Supabase.instance.client;
@@ -60,7 +59,6 @@ class _CheckInScreenState extends State<CheckInScreen>
   void dispose() {
     _overlayAnim.dispose();
     cameraController.dispose();
-    controller.dispose();
     searchController.dispose();
     player.dispose();
     super.dispose();
@@ -77,7 +75,6 @@ class _CheckInScreenState extends State<CheckInScreen>
         subMessage = null;
         searchQuery = '';
         _isSuccess = false;
-        controller.clear();
         searchController.clear();
       });
     });
@@ -241,17 +238,6 @@ class _CheckInScreenState extends State<CheckInScreen>
     searchController.clear();
   }
 
-  Future<void> handleScan() async {
-    if (_isProcessing) return;
-    final input = controller.text.trim();
-    if (input.length < 6) return;
-    final found = widget.members.firstWhere(
-      (m) => m.id == input,
-      orElse: () => _unknownMember(),
-    );
-    await processMember(found);
-  }
-
   Widget _buildAvatar(String? url, String fallback, {double radius = 40}) {
     if (url == null || url.isEmpty) {
       return CircleAvatar(
@@ -384,6 +370,7 @@ class _CheckInScreenState extends State<CheckInScreen>
     return Scaffold(
       appBar: AppBar(title: const Text('Check-In')),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -396,10 +383,8 @@ class _CheckInScreenState extends State<CheckInScreen>
                     TextField(
                       controller: searchController,
                       decoration: InputDecoration(
-                        hintText: 'Search Member',
+                        hintText: 'Search member name',
                         prefixIcon: const Icon(Icons.search),
-                        filled: true,
-                        fillColor: Colors.white,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
@@ -429,24 +414,6 @@ class _CheckInScreenState extends State<CheckInScreen>
                         },
                       )
                     else ...[
-                      TextField(
-                        controller: controller,
-                        decoration: InputDecoration(
-                          hintText: 'Enter Member ID',
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (v) {
-                          if (v.length >= 6) handleScan();
-                        },
-                      ),
-
-                      const SizedBox(height: 20),
-
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
