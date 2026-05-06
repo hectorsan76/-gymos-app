@@ -35,8 +35,15 @@ enum MemberStatus {
 }
 
 class _MemberListScreenState extends State<MemberListScreen> {
+  late List<Member> _localMembers;
   String searchQuery = "";
   String selectedFilter = "ALL";
+
+  @override
+  void initState() {
+    super.initState();
+    _localMembers = List.from(widget.members);
+  }
 
   MemberStatus getStatus(Member m) {
     final now = DateTime.now();
@@ -169,9 +176,14 @@ class _MemberListScreenState extends State<MemberListScreen> {
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
               title: const Text("Delete Member"),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                widget.onDeleteMember(member);
+                setState(() => _localMembers.removeWhere((m) => m.id == member.id));
+                await widget.onDeleteMember(member);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Member deleted")),
+                );
               },
             ),
             const SizedBox(height: 10),
@@ -201,7 +213,7 @@ class _MemberListScreenState extends State<MemberListScreen> {
   Widget build(BuildContext context) {
     final purchaseService = PurchaseService(); // ✅ ADDED
 
-    final filteredMembers = widget.members.where((member) {
+    final filteredMembers = _localMembers.where((member) {
       final query = searchQuery.toLowerCase();
 
       final matchesSearch =

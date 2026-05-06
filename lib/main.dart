@@ -291,15 +291,20 @@ class _MembersShellState extends State<MembersShell> {
   }
 
   Future<void> _deleteMember(Member member) async {
+    if (mounted) {
+      setState(() => _members = _members.where((m) => m.id != member.id).toList());
+    }
     try {
       await supabase
           .from('members')
           .update({'deleted_at': DateTime.now().toIso8601String()})
           .eq('id', member.id);
-
-      await _fetchMembers();
     } catch (e) {
       debugPrint("DELETE ERROR: $e");
+      // Restore on failure
+      if (mounted) {
+        setState(() => _members = [..._members, member]);
+      }
     }
   }
 
