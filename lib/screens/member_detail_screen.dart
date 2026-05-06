@@ -506,7 +506,6 @@ child: isProcessingSale
             height: 100,
             fit: BoxFit.cover,
             memCacheWidth: 200,
-            memCacheHeight: 200,
             fadeInDuration: const Duration(milliseconds: 100),
             placeholder: (_, __) => const Center(
               child: SizedBox(

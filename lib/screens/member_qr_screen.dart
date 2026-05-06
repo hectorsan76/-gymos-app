@@ -178,6 +178,7 @@ class _MemberQRScreenState extends State<MemberQRScreen> {
                         imageUrl: qrUrl,
                         width: 200,
                         height: 200,
+                        fit: BoxFit.contain,
                       ),
 
                       const SizedBox(height: 20),
